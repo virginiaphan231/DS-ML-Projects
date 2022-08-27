@@ -1,0 +1,311 @@
+---
+title: "Bike Sharing Data Analysis Project"
+author: "Virginia Phan"
+date: "2022-08-07"
+output: html_document
+---
+
+## Import packages
+```{r}
+install.packages("tidyverse", repos = "https://cran.rstudio.com")
+install.packages("skimr", repos = "https://cran.rstudio.com")
+install.packages("tidyr", repos = "https://cran.rstudio.com")
+install.packages("readr", repos = "https://cran.rstudio.com")
+install.packages("ggplot2", repos = "https://cran.rstudio.com")
+install.packages("dplyr", repos = "https://cran.rstudio.com")
+
+```
+
+
+```{r}
+options(repos="https://cran.rstudio.com" )
+```
+
+## Import libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(lubridate)
+library(readr)
+library(plotly)
+library(mapview)
+library(dplyr)
+library(scales)
+```
+## Import cleaned dataset
+```{r}
+trip_df <- read_csv('D:/Case Study 1 - Bike Sharing/Datasets/cleaned_tripdata.csv')
+View(trip_df)
+```
+## Inspect dataframe
+```{r}
+View(trip_df)
+str(trip_df)
+colnames(trip_df)   # Columns's names of the dataframe
+summary(trip_df)    # Statistical summary
+tail(trip_df)
+```
+## DATA ANALYSIS
+### Removing from dataframe where duration is invalid (<0)
+```{r}
+trip_df <- trip_df[!(trip_df$duration_in_second < 0),]
+```
+
+### Create tables number of rides for each types of memberships
+#### Member's number of rides
+```{r}
+member_riders <- trip_df %>% 
+                  filter(trip_df$membership_type == "member")
+
+member_start <- member_riders %>% 
+                  group_by(start_station_name, start_lat, start_lng) %>% 
+                  summarise(n_rides_start = n()) %>% 
+                  arrange(-n_rides_start)
+
+member_start
+```
+#### Casual's number of rides
+```{r}
+casual_riders <- trip_df %>% 
+  filter(trip_df$membership_type == "casual")
+
+casual_start <- casual_riders %>% 
+  group_by(start_station_name, start_lat, start_lng) %>% 
+  summarise(n_rides_start = n()) %>% 
+  arrange(-n_rides_start) 
+casual_start
+```
+
+### Descriptive analysis on duration (in seconds)
+```{r}
+mean(trip_df$duration_in_second)     #(total duration/length)
+max(trip_df$duration_in_second)      # longest duration
+min(trip_df$duration_in_second)      # shortest duration
+```
+### Descriptive analysis on duration for each type of memberships
+```{r}
+avg_duration_mbs <- aggregate(trip_df$duration_in_second, by = list(trip_df$membership_type),FUN = mean)
+avg_duration_mbs    # average duration for each type of memberships
+
+max_duration_mbs <- aggregate(trip_df$duration_in_second, by = list(trip_df$membership_type), FUN = max)
+max_duration_mbs    # longest duration for each type of memberships
+
+min_duration_mbs <- aggregate(trip_df$duration_in_second, by = list(trip_df$membership_type), FUN = min)
+min_duration_mbs    # shortest duration for each type of memberships
+
+
+```
+### Average duration by each day of week
+```{r}
+avg_duration_day <- aggregate(trip_df$duration_in_second, by = list(trip_df$day_of_week), FUN = mean)
+avg_duration_day
+
+
+# Reordering columns day_of_week
+trip_df$day_of_week <- ordered(trip_df$day_of_week, levels = c('Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                                                               'Friday', 'Saturday', 'Sunday'))
+```
+
+### Ridership by each day of week for members and casuals
+```{r}
+ridership_day_mbs <- trip_df %>% 
+                      group_by(day_of_week, membership_type) %>% 
+                      summarise(num_of_ride = n(),
+                                avg_duration = mean(duration_in_second)) %>% 
+                      arrange(day_of_week, avg_duration, num_of_ride)
+ridership_day_mbs
+```
+### Number of rides for each month of the year
+```{r}
+num_ride_per_month <- trip_df %>% 
+  group_by(month, membership_type) %>% 
+  summarise(number = n()) %>% 
+  arrange(month, number)
+num_ride_per_month
+
+
+# Reorder column month
+trip_df$month <- ordered(trip_df$month, levels = c('January', 'February', 'March', 'April', 'May', 'June', 'July',
+                                                   'August', 'September', 'October', 'November', 'December'))
+```
+### Number of rides for each type of bike
+```{r} 
+num_of_ride_type <- trip_df %>% 
+                      group_by(rideable_type) %>% 
+                      summarise(number = n()) %>% 
+                      arrange(-number)
+num_of_ride_type
+  
+```
+
+## DATA VISUALIZATION
+### Number of rides each day of week
+```{r}
+count_per_day <- trip_df %>% 
+                    group_by (day_of_week) %>% 
+                    summarise(number = n())
+count_per_day$day_of_week <- factor(count_per_day$day_of_week, levels = c("Monday", "Tuesday", 
+                                                                          "Wednesday", "Thursday",
+                                                                          "Friday", "Saturday",
+                                                                          "Sunday"))
+View(count_per_day)
+
+ggplot(data = count_per_day, aes(x = day_of_week, y = number, fill = day_of_week))  + geom_bar(stat = "identity",
+                                                                                               color = "black") + 
+  geom_text(aes(label = number), vjust = 1.6, color = "black", size = 3.0) + labs(title = 'Number of Rides Each Day of the Week', y = 'Number of rides', x = 'Day of week') +
+              scale_y_continuous(labels = comma) + theme_classic() 
+```
+
+### Casual vs Member uses of ride sharing throughout the day
+```{r}
+count_per_hour <- trip_df %>% 
+                  group_by(time_of_day, membership_type) %>% 
+                  summarise(number = n())
+View(count_per_hour)
+
+ggplot(data = count_per_hour, aes(x = time_of_day, y = number, group = membership_type)) + geom_line(aes(color = membership_type)) +
+  geom_point(aes(color = membership_type, shape = membership_type)) + scale_x_continuous(breaks = c(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23)) +
+  scale_color_manual(values = c("#272324", "#E86F68")) + theme_minimal() +
+  labs(title = "Casual vs Member uses of ride sharing throughout the day", x = 'Daytime', y = "Number of rides")
+
+```
+
+### Most prefered type of bikes (based on numbers of rides per year)
+```{r}
+proportion_bike_type <- trip_df %>% 
+                        group_by(rideable_type)  %>% 
+                        summarise(number = n()) %>% 
+                        mutate(percent = round(number/sum(number)*100))
+
+View(proportion_bike_type)
+
+
+pie(proportion_bike_type$percent, labels = paste(proportion_bike_type$rideable_type, 
+    sep = " ",proportion_bike_type$percent, "%" ),
+    col = c('#82E0AA', '#AED6F1', '#F9E79F'),
+    main = "Most prefered type of bikes (based on numbers of rides per year)")
+
+```
+### Average duration (in seconds) for each type of memberships
+```{r}
+average_length_membership <- trip_df %>% 
+                              group_by(membership_type, rideable_type) %>% 
+                              summarise(avg_ride_length = round(mean(duration_in_second)))
+
+
+
+View(average_length_membership)
+
+
+
+ggplot(data = average_length_membership, aes(x = membership_type, y = avg_ride_length, fill = rideable_type)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  geom_text(aes(label = paste(avg_ride_length,"s")), vjust = 1.5, color = "black", size = 3.0,
+                                        position = position_dodge(.9)) +
+  scale_fill_brewer(palette = "Pastel1") + theme_light() +
+  labs(title = "Average duration (in seconds) for each type of memberships", y = 'Average duration in seconds', x = 'Membership types')
+
+```
+### Number of rides by membership types throughout the year
+```{r}
+num_ride_per_month <- trip_df %>% 
+                      group_by(month, membership_type) %>% 
+                      summarise(number = n())
+View(num_ride_per_month)
+
+
+ggplot(data = num_ride_per_month,aes( x = month, y = number, group = membership_type)) +
+  geom_line(aes(color = membership_type)) + geom_point(aes(color = membership_type, shape = membership_type)) +
+  scale_x_discrete("Month", labels = c("Jan", "Feb","Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  scale_y_continuous(labels = comma) + theme_light() + 
+  labs(title = 'Number of rides by membership types throughout the year', y = 'Number of rides')
+
+```
+### Top 5 prefered start station based on number of rides
+
+```{r}
+top_5_station <- trip_df %>% 
+                  group_by(start_station_name) %>% 
+                  summarise(number = n()) %>% 
+                  arrange(desc(number)) %>% 
+                  slice(1:5)
+
+View(top_5_station)
+
+ggplot(data = top_5_station, aes(x = reorder(start_station_name, number), y = number, fill = number)) + geom_bar(stat = "identity") +
+  coord_flip() + labs(title = 'Top 5 prefered start station based on number of rides', x = 'Number of rides', y = 'Start station name') 
+
+```
+
+### Member Riders' Favourite Start Locations
+```{r}
+member_riders <- trip_df %>%
+  filter(trip_df$membership_type == "member")
+member_start <- member_riders %>% 
+  group_by(start_station_name, start_lat, start_lng) %>% 
+  summarise(n_rides_start = n()) %>%
+  arrange(-n_rides_start)
+
+
+View(member_start)
+
+member_start[1:50,] %>%
+  mapview(
+    xcol = "start_lng", 
+    ycol = "start_lat",
+    zcol = "n_rides_start",
+    cex = "n_rides_start",
+    at = c(10000, 20000, 30000, 40000, 50000, 60000),
+    crs = 4326,
+    grid = F, 
+    legend = T,
+    layer.name = "Member Riders' Favourite Start Locations")
+```
+
+
+### Casual Riders's Favorite Start Location
+```{r}
+casual_riders <- trip_df %>% 
+  filter(trip_df$membership_type == "casual")
+
+casual_start <- casual_riders %>% 
+  group_by(start_station_name, start_lat, start_lng) %>% 
+  summarise(n_rides_start = n()) %>% 
+  arrange(-n_rides_start) 
+
+
+View(casual_start)
+
+casual_start[1:50,] %>% 
+  mapview(
+    xcol = "start_lng",
+    ycol = "start_lat",
+    zcol = "n_rides_start",
+    cex = "n_rides_start",
+    at = c(10000,20000,30000,40000,50000,60000),
+    crs = 4326,
+    grid = F,
+    legend = T,
+    layer.name = "Casual Riders's Favorite Start Location")
+```
+
+
+
+
+```{r}
+
+options(repos="https://cran.rstudio.com" )
+```
+
+
+
+
+
+
+
+
+
+
+
+
