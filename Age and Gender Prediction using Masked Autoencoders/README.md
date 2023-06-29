@@ -1,10 +1,9 @@
 # Age and Gender Prediction using Masked Autoencoders
 
 ## Project Description:
-In this report, we’re putting forward a new approach for age and gender prediction. Our method is based on the use of Masked Autoencoders (MAE) for initial training on the MegaAge dataset, followed by the application of transfer learning for specific tasks using
-the UTKFace dataset.
-The key element in our proposal is the integration of pretrained MAE encoders into a Vision Transformer (ViT) model. This model has two specific parts, one for Age Regression and the other for Gender Classification. We’ve also added a BatchNorm layer before these sections to improve the model’s stability.
-Our experiments have shown that this approach leads to better results. We’ve seen improved accuracy in our predictions when compared to existing methods. In summary, our proposed framework offers a significant step forward in the field of age and gender prediction.
+In this report, we’re putting forward a new approach for age and gender prediction. Our method is based on the use of Masked Autoencoders (MAE) for initial training on the MegaAge dataset, followed by the application of transfer learning for specific tasks using the UTKFace dataset.
+The key element in our proposal is the integration of pretrained MAE encoders into a Vision Transformer (ViT) model. This model has two specific parts, one for Age Regression and the other for Gender Classification. We’ve also added a BatchNorm layer before these sections to improve the model’s stability.
+Our experiments have shown that this approach leads to better results. We’ve seen improved accuracy in our predictions when compared to existing methods. In summary, our proposed framework offers a significant step forward in the field of age and gender prediction.
 
 ## Proposed Architecture:
 ![MAE](https://github.com/virginiaphan231/DS-ML-Projects/assets/102519646/56870ae2-fe69-4219-a32a-f78d22479c26)
